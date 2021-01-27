@@ -166,4 +166,4 @@ layout: null,
 });
 
 Map.add(controlPanel);
-Map.setCenter(-40.764, 74.817, 5);
+// Map.setCenter(-40.764, 74.817, 5);

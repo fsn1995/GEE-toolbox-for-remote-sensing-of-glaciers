@@ -1,9 +1,30 @@
 /*
-This app is to present the albedo product over Greenland Ice Sheet.
+This app is to present the albedo product over Greenland Ice Sheet with MODIS data.
+Base map is the ArcticDEM. Temperature is taken from NOAA/GFS0P25
 
-The code of this interactive app was mainly adapted from
+The code of this interactive app was mainly adapted from google's tutorial
 https://developers.google.com/earth-engine/tutorials/community/drawing-tools-region-reduction?hl=en#result
+https://developers.google.com/earth-engine/guides/ic_visualization
+
+shunan.feng@envs.au.dk
+
 */
+var greenlandmask = ee.Image('OSU/GIMP/2000_ICE_OCEAN_MASK')
+                      .select('ocean_mask').eq(0); //'ice_mask', 'ocean_mask'
+var greenlandBound = ee.Image('OSU/GIMP/2000_ICE_OCEAN_MASK').geometry().bounds();
+var arcticDEM = ee.Image('UMN/PGC/ArcticDEM/V3/2m_mosaic');
+var arcticDEMgreenland = arcticDEM.updateMask(greenlandmask);
+
+var elevationVis = {
+  min: -50.0,
+  max: 2000.0,
+  palette: ['0d13d8', '60e1ff', 'ffffff'],
+};
+Map.addLayer(arcticDEMgreenland, elevationVis, 'Elevation');
+
+Map.setCenter(-41.0, 74.0, 4);
+
+
 
 var MODISband = {
   "Black-sky albedo for visible brodband": "Albedo_BSA_vis",
@@ -22,6 +43,60 @@ var MODISband = {
 //   {label:"White-sky albedo for NIR broadband", value: "Albedo_WSA_nir"},
 //   {label:"White-sky albedo for shortwave broadband", value: "Albedo_WSA_shortwave"}
 // ];
+
+
+var dataset = ee.ImageCollection('MODIS/006/MCD43A3')
+                .map(function(image){
+                    return image.divide(1000)
+                                .copyProperties(image, ['system:time_start'])
+                                .set({date: ee.Date(image.get('system:time_start')).format('YYYY-MM-DD')});
+                  });
+
+
+var date_end = ee.Date(Date.now()).format('yyyy-MM-dd')
+var date_start =ee.Date(Date.now()).advance(-2, 'year').format('yyyy-MM-dd');
+
+
+
+var tempCol = ee.ImageCollection('NOAA/GFS0P25')
+  .filterDate(ee.Date(Date.now()).advance(-1, 'day'), ee.Date(Date.now()).advance(0, 'day'))
+  .limit(24)
+  .select('temperature_2m_above_ground');
+
+// Define arguments for animation function parameters.
+var gifParams = {
+  dimensions: 768,
+  region: greenlandBound,
+  framesPerSecond: 3,
+  crs: 'EPSG:3857',
+  min: -40.0,
+  max: 30.0,
+  palette: ['blue', 'purple', 'cyan', 'green', 'yellow', 'red']
+};
+
+var gifAnimation = ui.Thumbnail({
+  image: tempCol,
+  params: gifParams,
+  style: {
+    position: 'bottom-right',
+    width: '300px',
+    height: '500px'
+  }
+});
+
+var gifPanel = ui.Panel({
+  widgets: [
+    ui.Label('temperature_2m_above_ground\nlimit to 24h\nGFS: Global Forecast System \n384-Hour Predicted Atmosphere Data',
+    {whiteSpace: 'pre'}),
+    gifAnimation
+  ],
+  style: {position: 'bottom-right'},
+  layout: null,
+  });
+  
+Map.add(gifPanel);
+
+
 
 var drawingTools = Map.drawingTools();
 
@@ -62,10 +137,16 @@ drawingTools.draw();
 
 var chartPanel = ui.Panel({
 style:
-    {height: '235px', width: '600px', position: 'bottom-right', shown: false}
+    {height: '235px', width: '600px', position: 'bottom-center', shown: false}
 });
 
 Map.add(chartPanel);
+
+var gifPanel = ui.Panel({
+  style:
+      {height: '600px', width: '300px', position: 'bottom-center', shown: false}
+  });
+Map.add(gifPanel);
 
 function chartTimeSeries() {
 // Make the chart panel visible the first time a geometry is drawn.
@@ -82,26 +163,11 @@ drawingTools.setShape(null);
 // Reduction scale is based on map scale to avoid memory/timeout errors.
 var mapScale = Map.getScale();
 var scale = mapScale > 5000 ? mapScale * 2 : 5000;
-// var addChart = ui.Select({
-//   items: Object.keys(MODISband),
-//   onChange: function(key) {
-//     var chart = ui.Chart.image
-//             .seriesByRegion({
-//               imageCollection: ee.ImageCollection('MODIS/006/MCD43A3'),
-//               regions: aoi,
-//               reducer: ee.Reducer.mean(),
-//               band: MODISband[key],
-//               scale: scale,
-//               xProperty: 'system:time_start'
-//             });
-//     return chartPanel.widgets().reset([chart])
-//   }
-// });
-// print(addChart)
+
 // Chart time series for the selected area of interest.
 var chart = ui.Chart.image
                 .seriesByRegion({
-                  imageCollection: ee.ImageCollection('MODIS/006/MCD43A3'),
+                  imageCollection: dataset.filterDate(date_start, date_end),
                   regions: aoi,
                   reducer: ee.Reducer.mean(),
                   band: selectedBand,
@@ -112,7 +178,7 @@ var chart = ui.Chart.image
                   titlePostion: 'none',
                   legend: {position: 'none'},
                   hAxis: {title: 'Date'},
-                  vAxis: {title: 'albedo (x1e4)'},
+                  vAxis: {title: 'albedo'},
                   series: {0: {color: '23cba7'}}
                 });
 
@@ -123,6 +189,7 @@ chartPanel.widgets().reset([chart]);
 
 drawingTools.onDraw(ui.util.debounce(chartTimeSeries, 500));
 drawingTools.onEdit(ui.util.debounce(chartTimeSeries, 500));
+
 
 var symbol = {
 rectangle: '⬛',
@@ -158,7 +225,7 @@ widgets: [
   ui.Label('2. Draw a geometry.'),
   ui.Label('3. Wait for chart to render.'),
   ui.Label(
-      '4. Repeat 1-3 or edit/move\ngeometry for a new chart.',
+      '4. Repeat 0-3 or edit/move\ngeometry for a new chart.',
       {whiteSpace: 'pre'})
 ],
 style: {position: 'bottom-left'},

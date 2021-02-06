@@ -20,10 +20,39 @@ var elevationVis = {
   max: 2000.0,
   palette: ['0d13d8', '60e1ff', 'ffffff'],
 };
-Map.addLayer(arcticDEMgreenland, elevationVis, 'Elevation');
+
 
 Map.setCenter(-41.0, 74.0, 4);
 
+// calculate the slope
+var DEMterrain = ee.Terrain.products(arcticDEMgreenland);
+
+var imMinMax = DEMterrain.reduceRegion({
+    reducer: ee.Reducer.minMax(),
+    geometry: greenlandBound,
+    scale: 3000,
+    // bestEffort: Boolean,
+    tileScale: 4
+});
+print(imMinMax);
+
+
+Map.addLayer(DEMterrain.select('slope'), {min: 0, max: 10, gamma: 1.5}, 'slope');
+Map.addLayer(DEMterrain.select('aspect'), {min: 0, max: 360}, 'aspect');
+Map.addLayer(arcticDEMgreenland, elevationVis, 'Elevation');
+// var slope = ALOSterrain.select('slope');
+// var zones = slope.gte(2).add(slope.gte(7)).add(slope.gte(12)).add(slope.gte(25));
+// zones = zones.updateMask(zones.neq(0));
+// var vectors = zones.addBands(slope).reduceToVectors({
+//     geometry: roi,
+//     scale: 1000,
+//     geometryType: 'polygon',
+//     eightConnected: false,
+//     labelProperty: 'slope zones',
+//     reducer: ee.Reducer.mean()
+// });
+
+// Map.addLayer(zones, {min: 1, max: 4, palette: ['0000FF', '00FF00', 'FF0000', 'ffffff']}, 'slope zones');
 
 
 var MODISband = {

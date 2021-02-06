@@ -1,7 +1,7 @@
 var greenlandIceOceanMask =  ee.Image('OSU/GIMP/2000_ICE_OCEAN_MASK')
 var greenlandmask = ee.Image('OSU/GIMP/2000_ICE_OCEAN_MASK')
-                      .select('ocean_mask').eq(0); //'ice_mask', 'ocean_mask'
-greenlandmask = greenlandmask.updateMask(greenlandmask.neq(0));
+                      .select('ice_mask').eq(1); //'ice_mask', 'ocean_mask'
+greenlandmask = greenlandmask.updateMask(greenlandmask.eq(1));
 
 var greenlandBound = ee.Image('OSU/GIMP/2000_ICE_OCEAN_MASK').geometry().bounds();
 var arcticDEM = ee.Image('UMN/PGC/ArcticDEM/V3/2m_mosaic');
@@ -13,7 +13,7 @@ var elevationVis = {
   palette: ['0d13d8', '60e1ff', 'ffffff'],
 };
 Map.addLayer(arcticDEMgreenland, elevationVis, 'Elevation');
-Map.addLayer(greenlandmask,'ocean mask');
+Map.addLayer(greenlandmask);
 Map.setCenter(-41.0, 74.0, 4);
 
 // Convert the zones of the thresholded nightlights to vectors.

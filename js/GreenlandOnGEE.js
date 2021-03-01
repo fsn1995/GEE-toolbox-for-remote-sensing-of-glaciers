@@ -23,7 +23,7 @@ var elevationVis = {
 
 
 Map.setCenter(-41.0, 74.0, 4);
-
+Map.setOptions('HYBRID');
 // calculate the slope
 var DEMterrain = ee.Terrain.products(arcticDEMgreenland);
 
@@ -34,7 +34,7 @@ var imMinMax = DEMterrain.reduceRegion({
     // bestEffort: Boolean,
     tileScale: 4
 });
-print(imMinMax);
+// print(imMinMax);
 
 
 Map.addLayer(DEMterrain.select('slope'), {min: 0, max: 10, gamma: 1.5}, 'slope');
@@ -165,7 +165,7 @@ drawingTools.draw();
 }
 
 var chartPanel = ui.Panel({
-style:
+  style:
     {height: '235px', width: '600px', position: 'bottom-center', shown: false}
 });
 

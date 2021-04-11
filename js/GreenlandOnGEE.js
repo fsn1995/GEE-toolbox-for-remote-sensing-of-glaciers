@@ -56,6 +56,8 @@ Map.addLayer(arcticDEMgreenland, elevationVis, 'Elevation');
 
 
 var MODISband = {
+  "Snow albedo": "Snow_Albedo_Daily_Tile",
+  "NDSI Snow Cover": "NDSI_Snow_Cover",
   "Black-sky albedo for visible brodband": "Albedo_BSA_vis",
   "Black-sky albedo for NIR broadband": "Albedo_BSA_nir",
   "Black-sky albedo for shortwave broadband": "Albedo_BSA_shortwave",
@@ -73,17 +75,29 @@ var MODISband = {
 //   {label:"White-sky albedo for shortwave broadband", value: "Albedo_WSA_shortwave"}
 // ];
 
-
-var dataset = ee.ImageCollection('MODIS/006/MCD43A3')
+var modis1 = ee.ImageCollection('MODIS/006/MCD43A3')
                 .map(function(image){
                     return image.divide(1000)
                                 .copyProperties(image, ['system:time_start'])
                                 .set({date: ee.Date(image.get('system:time_start')).format('YYYY-MM-DD')});
                   });
 
+var modis2 = ee.ImageCollection('MODIS/006/MOD10A1').select(['Snow_Albedo_Daily_Tile', 'NDSI_Snow_Cover'])
+                .map(function(image){
+                    return image.divide(1000)
+                                .copyProperties(image, ['system:time_start'])
+                                .set({date: ee.Date(image.get('system:time_start')).format('YYYY-MM-DD')});
+                  });              
+
+var dataset = ee.ImageCollection(ee.Join.saveFirst('Snow_Albedo_Daily_Tile').apply({
+  primary: modis2,
+  secondary: modis1,
+  condition: ee.Filter.equals({leftField: 'system:index', rightField: 'system:index'})
+}))             
+
 
 var date_end = ee.Date(Date.now()).format('yyyy-MM-dd')
-var date_start =ee.Date(Date.now()).advance(-2, 'year').format('yyyy-MM-dd');
+var date_start =ee.Date(Date.now()).advance(-10, 'year').format('yyyy-MM-dd');
 
 
 
@@ -196,7 +210,7 @@ var scale = mapScale > 5000 ? mapScale * 2 : 5000;
 // Chart time series for the selected area of interest.
 var chart = ui.Chart.image
                 .seriesByRegion({
-                  imageCollection: dataset.filterDate(date_start, date_end),
+                  imageCollection: dataset.filterDate(date_start, date_end).filterBounds(aoi),
                   regions: aoi,
                   reducer: ee.Reducer.mean(),
                   band: selectedBand,
@@ -207,7 +221,7 @@ var chart = ui.Chart.image
                   titlePostion: 'none',
                   legend: {position: 'none'},
                   hAxis: {title: 'Date'},
-                  vAxis: {title: 'albedo'},
+                  vAxis: {title: 'albedo/snowcover'},
                   series: {0: {color: '23cba7'}}
                 });
 

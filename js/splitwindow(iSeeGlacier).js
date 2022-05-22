@@ -4,7 +4,7 @@ for monitoring the glaicer change on Greenland Ice Sheet.
 
 The code is modified based on google's tutorial 
 https://developers.google.com/earth-engine/guides/ui_panels
-https://google.earthengine.app/view/split-panel
+
 
 shunan.feng@envs.au.dk
 */
@@ -85,13 +85,13 @@ var showMosaic1 = function(range) {
   // Asynchronously compute the name of the composite.  Display it.
   var visParams = {
     min: 0.0,
-    max: 0.5,
+    max: 1,
     bands: ['B4', 'B3', 'B2'],
   };
   var layer = ui.Map.Layer(mosaic, visParams, 'weekly mosaic');
   range.start().get('date').evaluate(function(name) {
-    var visParams = {bands: ['B4', 'B3', 'B2'], max: 100};
-    leftMap.layers().reset([layer]); //Map.layers().set(0, layer);
+    // var visParams = {bands: ['B4', 'B3', 'B2'], max: 100};
+    leftMap.layers().set(0, layer); //Map.layers().set(0, layer);
   });
 };
 
@@ -113,13 +113,13 @@ var showMosaic2 = function(range) {
   // Asynchronously compute the name of the composite.  Display it.
   var visParams = {
     min: 0.0,
-    max: 0.5,
+    max: 1,
     bands: ['B4', 'B3', 'B2'],
   };
   var layer = ui.Map.Layer(mosaic, visParams, 'weekly mosaic');
   range.start().get('date').evaluate(function(name) {
-    var visParams = {bands: ['B4', 'B3', 'B2'], max: 100};
-    rightMap.layers().reset([layer]); //Map.layers().set(0, layer);
+    // var visParams = {bands: ['B4', 'B3', 'B2'], max: 100};
+    rightMap.layers().set(0, layer); //Map.layers().set(0, layer);
   });
 };
 
@@ -139,3 +139,165 @@ var dateRange2 = ee.DateRange(date_start, date_end).evaluate(function(range) {
  * Set up the maps and control widgets
  */
 leftMap.setCenter(-40.764, 74.817, 5);
+
+
+
+
+
+// Add point of interest 
+
+// The namespace for our application.  All the state is kept in here.
+var app = {};
+
+/** Creates the UI panels. */
+app.createPanels = function() {
+  /* The introduction section. */
+  app.intro = {
+    panel: ui.Panel([
+      ui.Label({
+        value: 'I See Glacier!',
+        style: {fontWeight: 'bold', fontSize: '24px', margin: '10px 5px'}
+      }),
+      ui.Label('This app allows you to explore Sentinel 2 images ' +
+               'with a split panel.' + 
+               'Yes we can see more than just glaciers!')
+    ])
+  };
+
+  /* The collection filter controls. */
+  app.filters = {
+    // mapCenter: ui.Checkbox({label: 'Filter to map center', value: true}),
+    lat: ui.Textbox('lat'),
+    lon: ui.Textbox('lon'),
+    applyButton: ui.Button('Load Point', app.applyPoint),
+    loadingLabel: ui.Label({
+      value: 'Loading...',
+      style: {stretch: 'vertical', color: 'gray', shown: false}
+    })
+  };
+
+
+  
+  /* The panel for the filter control widgets. */
+  app.filters.panel = ui.Panel({
+    widgets: [
+      ui.Label('Select site', {fontWeight: 'bold'}),
+      ui.Label('Latitude'), app.filters.lat,
+      ui.Label('Longitude'), app.filters.lon,
+      // app.filters.mapCenter,
+      ui.Panel([
+        app.filters.applyButton,
+        app.filters.loadingLabel
+      ], ui.Panel.Layout.flow('horizontal'))
+    ],
+    style: app.SECTION_STYLE
+  });
+  /*  panel for logo and deep purple website */
+  var logo = ee.Image('projects/ee-deeppurple/assets/dplogo').visualize({
+    bands:  ['b1', 'b2', 'b3'],
+    min: 0,
+    max: 255
+    });
+  var thumb = ui.Thumbnail({
+    image: logo,
+    params: {
+        dimensions: '107x111',
+        format: 'png'
+        },
+    style: {height: '107px', width: '111px',padding :'0'}
+    });
+
+  app.deeppurple ={
+    logo: ui.Panel(thumb, 'flow', {width: '120px'}),
+    panel: ui.Panel([
+      ui.Label("The Deep Purple project receives funding from the European Research Council (ERC) under the European Union's Horizon 2020 research and innovation programme under grant agreement No 856416."),
+      ui.Label("https://www.deeppurple-ercsyg.eu/home", {}, "https://www.deeppurple-ercsyg.eu/home"),
+      ui.Label("https://github.com/fsn1995", {}, "https://github.com/fsn1995")
+    ])
+  };
+}
+
+
+//   /* The panel for the export section with corresponding widgets. */
+//   app.export.panel = ui.Panel({
+//     widgets: [
+//       ui.Label('4) Start an export', {fontWeight: 'bold'}),
+//       app.export.button
+//     ],
+//     style: app.SECTION_STYLE
+//   });
+// };
+
+/** Creates the app helper functions. */
+app.createHelpers = function() {
+  /**
+   * Enables or disables loading mode.
+   * @param {boolean} enabled Whether loading mode is enabled.
+   */
+  app.setLoadingMode = function(enabled) {
+    // Set the loading label visibility to the enabled mode.
+    app.filters.loadingLabel.style().set('shown', enabled);
+    // Set each of the widgets to the given enabled mode.
+    var loadDependentWidgets = [
+      // app.vis.select,
+      app.filters.lat,
+      app.filters.lon,
+      app.filters.applyButton,
+      // app.filters.mapCenter,
+      // app.picker.select,
+      // app.picker.centerButton,
+      // app.export.button
+    ];
+    loadDependentWidgets.forEach(function(widget) {
+      widget.setDisabled(enabled);
+    });
+  };
+
+  /** Applies the selection filters currently selected in the UI. */
+  app.applyPoint = function() {
+    app.setLoadingMode(false);
+    var poi = ee.Geometry.Point([ee.Number.parse(app.filters.lon.getValue()), ee.Number.parse(app.filters.lat.getValue())]);
+    var dot = ui.Map.Layer(poi, {color: 'red',  pointSize: 5, pointShape: 'circle'}, 'poi');
+    leftMap.layers().set(1,dot);
+    var dot2 = ui.Map.Layer(poi, {color: 'red', pointSize: 5, pointShape: 'circle'}, 'poi');
+    rightMap.layers().set(1,dot2);
+    leftMap.centerObject(poi, 6);
+  };
+
+};
+ 
+
+/** Creates the app constants. */
+app.createConstants = function() {
+  // app.COLLECTION_ID = 'LANDSAT/LC08/C01/T1_RT_TOA';
+  app.SECTION_STYLE = {margin: '20px 0 0 0'};
+  app.HELPER_TEXT_STYLE = {
+      margin: '8px 0 -3px 8px',
+      fontSize: '12px',
+      color: 'gray'
+  };
+};
+
+/** Creates the application interface. */
+app.boot = function() {
+  app.createConstants();
+  app.createHelpers();
+  app.createPanels();
+  var main = ui.Panel({
+    widgets: [
+      app.intro.panel,
+      app.filters.panel,
+      app.deeppurple.logo,
+      app.deeppurple.panel
+    ],
+    style: {width: '320px', padding: '8px'}
+  });
+  // Map.setCenter(-97, 26, 9);
+  ui.root.insert(0, main);
+
+};
+
+app.boot();
+
+
+

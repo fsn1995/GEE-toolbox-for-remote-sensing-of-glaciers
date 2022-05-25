@@ -1,2 +1,1 @@
-# GEE toolbox for remote sensing of glaciers development
- development version
+# GEE toolbox for remote sensing of glaciers

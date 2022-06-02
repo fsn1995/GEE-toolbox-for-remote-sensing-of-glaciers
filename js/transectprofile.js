@@ -368,7 +368,7 @@ app.createPanels = function() {
     panel: ui.Panel([
       ui.Label("The Deep Purple project receives funding from the European Research Council (ERC) under the European Union's Horizon 2020 research and innovation programme under grant agreement No 856416."),
       ui.Label("https://www.deeppurple-ercsyg.eu/home", {}, "https://www.deeppurple-ercsyg.eu/home"),
-      ui.Label("https://github.com/fsn1995", {}, "https://github.com/fsn1995")
+      ui.Label("https://github.com/fsn1995/GEE-toolbox-for-remote-sensing-of-glaciers", {}, "https://github.com/fsn1995/GEE-toolbox-for-remote-sensing-of-glaciers")
     ])
   };
 }

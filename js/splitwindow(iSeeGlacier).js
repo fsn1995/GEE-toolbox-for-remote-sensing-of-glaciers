@@ -167,8 +167,8 @@ app.createPanels = function() {
   /* The collection filter controls. */
   app.filters = {
     // mapCenter: ui.Checkbox({label: 'Filter to map center', value: true}),
-    lat: ui.Textbox('lat'),
-    lon: ui.Textbox('lon'),
+    lat: ui.Textbox('lat (e.g. 74.817)'),
+    lon: ui.Textbox('lon (e.g. -40.764)'),
     applyButton: ui.Button('Load Point', app.applyPoint),
     loadingLabel: ui.Label({
       value: 'Loading...',
@@ -181,7 +181,7 @@ app.createPanels = function() {
   /* The panel for the filter control widgets. */
   app.filters.panel = ui.Panel({
     widgets: [
-      ui.Label('Select site', {fontWeight: 'bold'}),
+      ui.Label('Select site (coordinate in decimal degrees)', {fontWeight: 'bold'}),
       ui.Label('Latitude'), app.filters.lat,
       ui.Label('Longitude'), app.filters.lon,
       // app.filters.mapCenter,

@@ -46,26 +46,24 @@ var linker = ui.Map.Linker([leftMap, rightMap]);
 
 // prepare sentinel data
 
-function maskS2clouds(image) {
-  var qa = image.select('QA60');
+// Cloud Score+ image collection. Note Cloud Score+ is produced from Sentinel-2
+// Level 1C data and can be applied to either L1C or L2A collections.
+var csPlus = ee.ImageCollection('GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED');
 
-  // Bits 10 and 11 are clouds and cirrus, respectively.
-  var cloudBitMask = 1 << 10;
-  var cirrusBitMask = 1 << 11;
+// Use 'cs' or 'cs_cdf', depending on your use case; see docs for guidance.
+var QA_BAND = 'cs';
 
-  // Both flags should be set to zero, indicating clear conditions.
-  var mask = qa.bitwiseAnd(cloudBitMask).eq(0)
-      .and(qa.bitwiseAnd(cirrusBitMask).eq(0));
+// The threshold for masking; values between 0.50 and 0.65 generally work well.
+// Higher values will remove thin clouds, haze & cirrus shadows.
+var CLEAR_THRESHOLD = 0.65;
 
-  return image.updateMask(mask).divide(10000).copyProperties(image, ['system:time_start']);
-}
+// Make a clear median composite.
+var s2col = ee.ImageCollection("COPERNICUS/S2")
+  .linkCollection(csPlus, [QA_BAND])
+  .map(function(img) {
+    return img.updateMask(img.select(QA_BAND).gte(CLEAR_THRESHOLD)).divide(10000).copyProperties(img, ['system:time_start']);
+  });
 
-
-var s2col = ee.ImageCollection("COPERNICUS/S2") 
-//   .filterDate(date_start, date_end)
-//   .filterBounds(roi)
-  .filter('CLOUDY_PIXEL_PERCENTAGE < 50')
-  .map(maskS2clouds);
 
 var date_start = ee.Image(s2col.first()).date().format('yyyy-MM-dd'),
     date_end = ee.Date(Date.now()).format('yyyy-MM-dd'),
@@ -138,7 +136,8 @@ var dateRange2 = ee.DateRange(date_start, date_end).evaluate(function(range) {
 /*
  * Set up the maps and control widgets
  */
-leftMap.setCenter(-40.764, 74.817, 5);
+var initialPoint = ee.Geometry.Point(-50.3736, 71.1445); 
+leftMap.centerObject(initialPoint, 10);
 
 
 
